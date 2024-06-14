@@ -1,10 +1,10 @@
 # InternLM2实战营第二期
 
 ## 第四节课 《XTuner 微调 LLM:1.8B、多模态、Agent》
-官网地址：[书生·浦语官网](https://internlm.intern-ai.org.cn/)
-课程录播视频链接地址：[XTuner 微调 LLM:1.8B、多模态、Agent_bilibili](https://www.bilibili.com/video/BV15m421j78d) 
+官网地址：[书生·浦语官网](https://internlm.intern-ai.org.cn/)  
+课程录播视频链接地址：[XTuner 微调 LLM:1.8B、多模态、Agent_bilibili](https://www.bilibili.com/video/BV15m421j78d)   
 
-Xtuner地址：[Xtuner](https://github.com/InternLM/xtuner)
+Xtuner地址：[Xtuner](https://github.com/InternLM/xtuner)  
 
 tips：建议这节课大家仔细听，可以让你快速了解大模型预训练的一些概念和模型内部实际的任务是怎么输出的。
 
@@ -945,7 +945,7 @@ if __name__ == '__main__':
 在运行前，我们还需要做的就是将端口映射到本地。那首先我们使用快捷键组合 `Windows + R`（Windows 即开始菜单键）打开指令界面，并输入命令，按下回车键。（Mac 用户打开终端即可）
 打开 PowerShell 后，先查询端口，再根据端口键入命令 （例如图中端口示例为 38374）：
 
-![](./image/40.png)
+![](./image/42.png)
 
 然后我们需要在 PowerShell 中输入以下内容（需要替换为自己的端口号）
 ```bash
@@ -1167,3 +1167,280 @@ git remote add origin https://github.com/Dstarjohn/SSPY-Gradio.git
 ![](./image/ok8.png)
 
 进行到这里，基本上快要结束了，需要等待硬件资源申请，后面步骤大家可以参考这一小节标题下面的官方指导文档。只要你的Gradio应用代码里面的仓库路径没有问题，基本上就已经实现啦，谢谢大家看到最后！
+
+
+
+### 3.2复现多模态训练与测试
+
+官方指导文档：[XTuner多模态训练与测试](https://github.com/InternLM/Tutorial/blob/camp2/xtuner/llava/xtuner_llava.md)
+
+继续在开发机上实践一下
+
+我们前面已经安装过了Xtuner（没安装的小伙伴们根据上面指导文档再安装一下xtuner），这里就不重复说明了，我们直接开启实战。
+
+LLaVA方案中，给LLM增加视觉能力的过程，即是训练Image Projector文件的过程。 该过程分为2个阶段：Pretrain和Finetune。
+
+我们需要直接把代码拉取到本地：
+
+```python
+cd ~ && git clone https://github.com/InternLM/tutorial -b camp2 && conda activate xtuner0.1.17 && cd tutorial
+
+# 自己在实验的时候建议不要用下面这种重复的数据，而是用高质量的数据
+python /root/tutorial/xtuner/llava/llava_data/repeat.py \
+  -i /root/tutorial/xtuner/llava/llava_data/unique_data.json \
+  -o /root/tutorial/xtuner/llava/llava_data/repeated_data.json \
+  -n 200
+```
+
+然后就是准备配置文件，这里有两种方式
+
+**省事模式**（不想改，或者怎么改都失败的情况）
+
+```python
+cp /root/tutorial/xtuner/llava/llava_data/internlm2_chat_1_8b_llava_tutorial_fool_config.py /root/tutorial/xtuner/llava/llava_internlm2_chat_1_8b_qlora_clip_vit_large_p14_336_lora_e1_gpu8_finetune_copy.py
+```
+
+**麻烦模式**（哈哈，建议实操，可以加深理解呀）
+
+```python
+# 查询xtuner内置配置文件
+xtuner list-cfg -p llava_internlm2_chat_1_8b
+
+# 拷贝配置文件到当前目录
+xtuner copy-cfg \
+  llava_internlm2_chat_1_8b_qlora_clip_vit_large_p14_336_lora_e1_gpu8_finetune \
+  /root/tutorial/xtuner/llava
+```
+
+接下来我们可以根据视频点击开发机左上角第四个图标（VScode）去修改`llava_internlm2_chat_1_8b_qlora_clip_vit_large_p14_336_lora_e1_gpu8_finetune_copy.py`文件。基本上是修改路径和输入的内容，修改的时候注意点不要把“+ -”符号ctrl v进去了，如下：
+
+```python
+# Model
+- llm_name_or_path = 'internlm/internlm2-chat-1_8b'
++ llm_name_or_path = '/root/share/new_models/Shanghai_AI_Laboratory/internlm2-chat-1_8b'
+- visual_encoder_name_or_path = 'openai/clip-vit-large-patch14-336'
++ visual_encoder_name_or_path = '/root/share/new_models/openai/clip-vit-large-patch14-336'
+
+# Specify the pretrained pth
+- pretrained_pth = './work_dirs/llava_internlm2_chat_1_8b_clip_vit_large_p14_336_e1_gpu8_pretrain/iter_2181.pth'  # noqa: E501
++ pretrained_pth = '/root/share/new_models/xtuner/iter_2181.pth'
+
+# Data
+- data_root = './data/llava_data/'
++ data_root = '/root/tutorial/xtuner/llava/llava_data/'
+- data_path = data_root + 'LLaVA-Instruct-150K/llava_v1_5_mix665k.json'
++ data_path = data_root + 'repeated_data.json'
+- image_folder = data_root + 'llava_images'
++ image_folder = data_root
+
+# Scheduler & Optimizer
+- batch_size = 16  # per_device
++ batch_size = 1  # per_device
+
+
+# evaluation_inputs
+- evaluation_inputs = ['请描述一下这张图片','Please describe this picture']
++ evaluation_inputs = ['Please describe this picture','What is the equipment in the image?']
+
+```
+
+接下来就可以开始微调（**报错重点来了**）
+
+```python
+cd /root/tutorial/xtuner/llava/   # 进到指定路径
+
+# Finetune
+xtuner train /root/tutorial/xtuner/llava/llava_internlm2_chat_1_8b_qlora_clip_vit_large_p14_336_lora_e1_gpu8_finetune_copy.py --deepspeed deepspeed_zero2
+```
+
+**好家伙，果然修改报错了，为啥推出省事模式（应该是大佬们的环境版本并不相通吧，毕竟研究的领域也可能大相径庭），我也报错了，但是解决了，哈哈，不是我发现的，是大佬发现的，我尝试的改了一下，就没问题了。**
+
+![](./image/que1.png)
+
+报错信息：
+
+```python
+TypeError: 'NoneType' object is not subscriptable in <xtuner.engine.hooks.evaluate_chat_hook.EvaluateChatHook object at 0x7f4f60580ac0>
+```
+
+
+问题就是transformers版本的问题，我们将transformers版本指定为4.39.3吧
+
+```python
+# 可以先查看下transformers当前版本是多少
+pip list
+
+pip install transformers==4.39.3
+```
+![](./image/que2.png)
+
+
+![](./image/que.png)
+
+![](./image/que3.png)
+
+请注意这个微调时间可能较长，可以提前准备后面的内容或者写写笔记哈。
+
+
+#### 3.2.1对比一下微调前后的性能差异
+
+##### 3.2.1.1 Finetune前
+
+> 即：**加载 1.8B 和 Pretrain阶段产物(iter_2181) 到显存。**
+
+```python
+# 解决小bug（设置默认环境变量）
+export MKL_SERVICE_FORCE_INTEL=1
+export MKL_THREADING_LAYER=GNU
+
+# pth转huggingface
+xtuner convert pth_to_hf \
+  llava_internlm2_chat_1_8b_clip_vit_large_p14_336_e1_gpu8_pretrain \
+  /root/share/new_models/xtuner/iter_2181.pth \
+  /root/tutorial/xtuner/llava/llava_data/iter_2181_hf
+
+# 启动！
+xtuner chat /root/share/new_models/Shanghai_AI_Laboratory/internlm2-chat-1_8b \
+  --visual-encoder /root/share/new_models/openai/clip-vit-large-patch14-336 \
+  --llava /root/tutorial/xtuner/llava/llava_data/iter_2181_hf \
+  --prompt-template internlm2_chat \
+  --image /root/tutorial/xtuner/llava/llava_data/test_img/oph.jpg
+```
+
+> Q1: Describe this image.
+> Q2: What is the equipment in the image?
+
+**这里有个小插曲，就是我在微调的时候，没时间等了，要下机啦，就给开发机续了1小时（就是如果开发机断开了或者我这种情况），第二天才来执行上面代码，结果执行`pth转huggingface`这一步的代码的时候，出现了报错：**
+
+```python
+OSError: We couldn't connect to 'https://hf-mirror.com' to load this file, couldn't find it in the cached files and it looks like internlm/internlm2-chat-1_8b is not the path to a directory containing a file named configuration_internlm2.py.
+```
+
+错误截图：
+
+![](./image/que7.png)
+
+**<span style="color:red">解决过程中，发现这是个大插曲，尝试了很多方法，最后是这么解决：</span>**
+
+**告诉你缓存中找不到某个文件（大概是这个意思），出现这个问题，看提示是说网络问题，但是我们使用`curl -I https://hf-mirror.com`测试了网络，显示200状态码，就没有问题。**
+
+首先我们使用`xtuner list-cfg -p llava_internlm2_chat_1_8b`查询内置的配置文件：
+
+![](./image/que8.png)
+
+然后老规矩先回到当前工作路径：
+
+```python
+# 激活环境
+conda activate xtuner0.1.17
+
+# cd到工作目录
+cd /root/tutorial/xtuner/llava/
+
+# 把pretrain配置文件拷贝到当前目录
+xtuner copy-cfg \
+  llava_internlm2_chat_1_8b_clip_vit_large_p14_336_e1_gpu8_pretrain \
+  /root/tutorial/xtuner/llava
+# 这里就是修改配置文件了放下面
+
+# 直接开始pth转huggingface（Finetune前的）
+xtuner convert pth_to_hf   /root/tutorial/xtuner/llava/llava_internlm2_chat_1_8b_clip_vit_large_p14_336_e1_gpu8_pretrain_copy.py   /root/share/new_models/xtuner/iter_2181.pth   /root/tutorial/xtuner/llava/llava_data/iter_2181_hf
+```
+
+**llava_internlm2_chat_1_8b_clip_vit_large_p14_336_e1_gpu8_pretrain_copy.py配置文件修改：**
+
+```python
+#######################################################################
+#                          PART 1  Settings                           #
+#######################################################################
+# Model
+llm_name_or_path = '/root/share/new_models/Shanghai_AI_Laboratory/internlm2-chat-1_8b'
+visual_encoder_name_or_path = '/root/share/new_models/openai/clip-vit-large-patch14-336'
+
+# Data
+data_root = '/root/tutorial/xtuner/llava/llava_data/'
+data_path = data_root + 'repeated_data.json'
+image_folder = data_root
+prompt_template = PROMPT_TEMPLATE.internlm2_chat
+max_length = int(2048 - (336 / 14)**2)
+
+# Scheduler & Optimizer
+batch_size = 1  # per_device
+accumulative_counts = 1
+dataloader_num_workers = 0
+max_epochs = 1
+optim_type = AdamW
+lr = 1e-3
+betas = (0.9, 0.999)
+weight_decay = 0
+max_norm = 1  # grad clip
+warmup_ratio = 0.03
+
+# Save
+save_steps = 500
+save_total_limit = 2  # Maximum checkpoints to keep (-1 means unlimited)
+
+# Evaluate the generation performance during the training
+evaluation_freq = 500
+SYSTEM = ''
+evaluation_images = 'https://llava-vl.github.io/static/images/view.jpg'
+evaluation_inputs = ['Please describe this picture','What is the equipment in the image?']
+```
+![](./image/que9.png)
+
+![](./image/que10.png)
+
+微调前的输出：
+
+![](./image/que11.png)
+
+
+
+##### 1.3.5.2. Finetune后
+
+> 即：**加载 1.8B 和 Fintune阶段产物 到显存。**
+
+```python
+# 解决小bug
+export MKL_SERVICE_FORCE_INTEL=1
+export MKL_THREADING_LAYER=GNU
+
+# pth转huggingface
+xtuner convert pth_to_hf \
+  /root/tutorial/xtuner/llava/llava_internlm2_chat_1_8b_qlora_clip_vit_large_p14_336_lora_e1_gpu8_finetune_copy.py \
+  /root/tutorial/xtuner/llava/work_dirs/llava_internlm2_chat_1_8b_qlora_clip_vit_large_p14_336_lora_e1_gpu8_finetune_copy/iter_1200.pth \
+  /root/tutorial/xtuner/llava/llava_data/iter_1200_hf
+
+# 启动！
+xtuner chat /root/share/new_models/Shanghai_AI_Laboratory/internlm2-chat-1_8b \
+  --visual-encoder /root/share/new_models/openai/clip-vit-large-patch14-336 \
+  --llava /root/tutorial/xtuner/llava/llava_data/iter_1200_hf \
+  --prompt-template internlm2_chat \
+  --image /root/tutorial/xtuner/llava/llava_data/test_img/oph.jpg
+```
+
+> Q1: Describe this image.
+> 中文：请描述此图像
+> 
+> Q2: What is the equipment in the image?
+> 中文：图片中的设备是什么？
+
+![](./image/que4.png)
+
+![](./image/que5.png)
+
+
+Finetune后如下：
+
+![](./image/que6.png)
+
+> A1：This is an image of an eye examination in progress. A man in a white lab coat, likely an optometrist, is attending to a female patient who is undergoing an eye test. She is using a phoropter, a device used to measure an individual's prescription for glasses or contact lenses. In the background, there's an eye chart with letters decreasing in size. The environment looks like a professional medical office, and both individuals seem focused on the task.
+>
+> 中文回答：这是正在进行的眼部检查的图像。一名身穿白色实验服的男子，可能是一名验光师，正在照顾一名正在接受眼科检查的女性患者。她正在使用验光仪，这是一种用于测量个人眼镜或隐形眼镜处方的设备。在背景中，有一个眼图，字母的大小在减小。环境看起来像一个专业的医疗办公室，两个人似乎都专注于任务。
+>
+> A2：The equipment in the image is a phoropter, a common optometric device. It's used to measure the patient's refractive error and to determine an appropriate prescription for glasses or contact lenses.
+>
+> 中文回答：图片中的设备是验光仪，一种常见的验光设备。它用于测量患者的屈光不正，并确定合适的眼镜或隐形眼镜处方。
+
+微调前只输出标题，微调后可以通过识别回答问题了。
+
