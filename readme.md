@@ -1162,11 +1162,22 @@ git remote add origin https://github.com/Dstarjohn/SSPY-Gradio.git
 
 **这里收到消息说结营时间延期啦！！平时自己时间太少，做的时候会停下来谢谢笔记，真有点费时间呢，不过好在自己学习到更多，对我的笔记上操作流程有任何疑问的都可以私我哦~~**
 
-这里就可以直接在OpenXLab上面去创建Gradio应用了，硬件资源这里需要同学申请哦（大概3个工作日哈，申请理由就写实战营），别慌张的使用默认的配置了。
+这里就可以直接在OpenXLab上面去创建Gradio应用了，硬件资源这里需要同学申请哦（大概3个工作日哈，申请理由就写实战营），应该使用![](D:\Desktop\书生·浦语大模型实战营\sspu-InternLM2-fou class\image\o2.png)的显卡配置，别慌张的使用默认的配置了。
+
+
+
 
 ![](./image/ok8.png)
 
 进行到这里，基本上快要结束了，需要等待硬件资源申请，后面步骤大家可以参考这一小节标题下面的官方指导文档。只要你的Gradio应用代码里面的仓库路径没有问题，基本上就已经实现啦，谢谢大家看到最后！
+
+
+
+tips：补充，上次申请的硬件资源已经通过了，并且成功运行了模型，已经公开，[Gradio应用](https://openxlab.org.cn/apps/detail/liuxin/InternLM2-chat-7b)
+
+![](./image/o1.png)
+
+
 
 
 
